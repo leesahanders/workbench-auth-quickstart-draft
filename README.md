@@ -1,5 +1,7 @@
 # workbench-auth-quickstart-draft
 
+> Currently working on aligning content and narrowing scope to Workbench. Check back later! 
+
 Related to [OPM-49](https://positpbc.atlassian.net/browse/OPM-49) 
 
 SE built how to guides, they were published in December:
