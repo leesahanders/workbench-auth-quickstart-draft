@@ -51,9 +51,9 @@ SCIM is the recommended approach. You can use SCIM if your environment meets the
 
 If you meet these requirements, follow the [SCIM provisioning](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#scim-provisioning) section after completing authentication configuration.
 
-### Use Just in Time (JIT) provisioning as a fallback[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#use-just-in-time-jit-provisioning-as-a-fallback)
+### Use Just in Time (JIT) provisioning[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#use-just-in-time-jit-provisioning-as-a-fallback)
 
-JIT provisioning is simpler to configure but provides limited user lifecycle management. Use JIT if:
+JIT provisioning offers distinct advantages by (1) creating user accounts on-demand, removing the need for pre-provisioning users, and (2) reducing the upfront setup and ongoing maintenance typically associated with a full SCIM integration or managing traditional directory syncs like LDAP/SSSD/Active Directory. It is is simpler to configure but provides limited user lifecycle management. Use JIT if:
 
 - You cannot configure HTTPS with a CA-signed certificate
 - Okta does not have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2` (e.g., often the case for air-gapped Workbench deployments)

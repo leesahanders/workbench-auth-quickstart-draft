@@ -43,28 +43,7 @@ If SCIM for user provisioning is needed then the additional requirements will ne
 
 If configuring with Slurm then additional networking considerations will need to be taken into account. Slurm configuration is documented [here](https://docs.posit.co/ide/server-pro/admin/integration/launcher-slurm.html). 
 
-## Choose your user provisioning strategy
-
-### Use System for Cross-domain Identity Management (SCIM) provisioning if you can meet all requirements
-
-SCIM is the recommended approach. You can use SCIM if your environment meets these requirements:
-
-- You have configured Workbench with HTTPS using a Certificate Authority (CA) signed certificate
-- EntraID must have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2`
-- You want to manage the full user lifecycle (creation, updates, deactivation) through Okta
-- You want centralized user and group management
-
-If you meet these requirements, follow the [SCIM provisioning TODO]() section after completing authentication configuration.
-
-### Use Just in Time (JIT) provisioning
-
-JIT provisioning offers distinct advantages by (1) creating user accounts on-demand, removing the need for pre-provisioning users, and (2) reducing the upfront setup and ongoing maintenance typically associated with a full SCIM integration or managing traditional directory syncs like LDAP/SSSD/Active Directory. It is is simpler to configure but provides limited user lifecycle management. Use JIT if:
-
-- You cannot configure HTTPS with a CA-signed certificate
-- EntraID does not have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2` (e.g., often the case for air-gapped Workbench deployments)
-- You do not need to manage user deactivation through Okta
-
-If you need JIT provisioning, follow the [JIT provisioning TODO]() section after completing authentication configuration.
+To configure authentication with either OpenID or SAML, both the software address and an additional path, if being used, must be known. If there is not an additional path that is being served from then omit that from the below instructions. 
 
 # EntraID Set Up Overview
 
@@ -122,9 +101,11 @@ JIT provisioning offers distinct advantages by (1) creating user accounts on-dem
 
 However, if your existing method already meets your needs for user lifecycle management or if you require pre-provisioning capabilities or complex role mapping, then a different user provisioning approach should be considered. SCIM would be a good option to consider for its ability to to create and manage assignemnt of users to group if that is needed for downstream workflows. 
 
-## Configure authentication
+This guide will show JIT provisioning as it is much easier to set up but SCIM is also perfectly valid as a choice. SCIM provisioning for Workbench is documented [here](https://docs.posit.co/ide/server-pro/admin/user_provisioning/azure.html) and [here](https://docs.posit.co/ide/server-pro/admin/user_provisioning/managing_users.html). 
 
-### Create the user authentication application in Microsoft Entra ID
+# Steps
+
+## Configure the user authentication applications in Microsoft Entra ID
 
 One application will need to be created per product needing authentication. 
 
