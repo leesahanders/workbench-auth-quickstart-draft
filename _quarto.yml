@@ -1,0 +1,21 @@
+project:
+  type: website
+  render:
+    - "how-to*.md"
+
+website:
+  title: "Workbench Auth Quickstart Guides"
+  navbar:
+    left:
+      - text: "EntraID"
+        href: "how-to entraid-openid-jit.md"
+      - text: "Okta"
+        href: "how-to-okta-openid-jit.md"
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    code-copy: true
+    code-overflow: wrap
