@@ -14,18 +14,18 @@ format:
 
 Step-by-step guide for configuring Okta authentication using OpenID Connect with System for Cross-domain Identity Management (SCIM) or Just in Time (JIT) user provisioning.
 
-## Overview[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#overview)
+## Overview
 
 This guide describes an opinionated approach to configure Okta for user provisioning and as an authentication provider for Posit Workbench using OpenID Connect (OIDC). We suggest using OIDC with Posit Workbench as it enables the most features (e.g., Azure and AWS Managed Credentials).
 
-## What you will accomplish[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#what-you-will-accomplish)
+## What you will accomplish
 
 By the end of this guide, your Workbench server will:
 
 - Authenticate users against Okta using OIDC
 - Automatically provision user accounts and home directories using SCIM or JIT provisioning
 
-## Prerequisites[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#prerequisites)
+## Prerequisites
 
 Before beginning this configuration:
 
@@ -36,11 +36,11 @@ Before beginning this configuration:
 - Valid SSL certificate configurations with verified access over HTTPS for Workbench
   - If an external proxy or load balancer is used, the front-door address must be configured with an SSL certificate.
 
-## Choose your user provisioning strategy[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#choose-your-user-provisioning-strategy)
+## Choose your user provisioning strategy
 
 This guide covers two provisioning approaches. Choose the one that fits your environment.
 
-### Use System for Cross-domain Identity Management (SCIM) provisioning if you can meet all requirements[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#use-system-for-cross-domain-identity-management-scim-provisioning-if-you-can-meet-all-requirements)
+### Use System for Cross-domain Identity Management (SCIM) provisioning if you can meet all requirements
 
 SCIM is the recommended approach. You can use SCIM if your environment meets these requirements:
 
@@ -51,7 +51,7 @@ SCIM is the recommended approach. You can use SCIM if your environment meets the
 
 If you meet these requirements, follow the [SCIM provisioning](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#scim-provisioning) section after completing authentication configuration.
 
-### Use Just in Time (JIT) provisioning[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#use-just-in-time-jit-provisioning-as-a-fallback)
+### Use Just in Time (JIT) provisioning
 
 JIT provisioning offers distinct advantages by (1) creating user accounts on-demand, removing the need for pre-provisioning users, and (2) reducing the upfront setup and ongoing maintenance typically associated with a full SCIM integration or managing traditional directory syncs like LDAP/SSSD/Active Directory. It is is simpler to configure but provides limited user lifecycle management. Use JIT if:
 
@@ -61,11 +61,11 @@ JIT provisioning offers distinct advantages by (1) creating user accounts on-dem
 
 If you need JIT provisioning, follow the [JIT provisioning](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#jit-provisioning) section after completing authentication configuration.
 
-## Configure authentication[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#configure-authentication)
+## Configure authentication
 
 Both provisioning strategies require OpenID Connect authentication. Complete these steps before proceeding to provisioning configuration.
 
-### Step 1. Create the Okta application[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#create-okta-application)
+### Step 1. Create the Okta application
 
 1. In Okta, navigate to **Applications** → **Browse App Catalog**.
 2. Search for “Posit Workbench”.
@@ -83,7 +83,7 @@ Both provisioning strategies require OpenID Connect authentication. Complete the
 11. Copy the **Client ID** and **Client secret** from the **Sign On** tab. You will need these values in the next step.
 12. Copy the URL for **OpenID Provider Metadata**. You will need this value in the next step.
 
-### Step 2. Configure Workbench for OpenID Connect[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#configure-workbench-oidc)
+### Step 2. Configure Workbench for OpenID Connect
 
 1. On the Workbench server, create the file `/etc/rstudio/openid-client-secret`:
     
@@ -144,9 +144,9 @@ Both provisioning strategies require OpenID Connect authentication. Complete the
 
 At this point, you have configured authentication. Users assigned to the Workbench application in Okta can authenticate, but they cannot start sessions until you configure user provisioning.
 
-## User provisioning[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#user-provisioning)
+## User provisioning
 
-### Step 1. Configure Workbench for user provisioning[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#configure-workbench-user-provisioning)
+### Step 1. Configure Workbench for user provisioning
 
 - [SCIM](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html)
 - [JIT](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html)
@@ -168,7 +168,7 @@ At this point, you have configured authentication. Users assigned to the Workben
     ```
     
 
-### Step 2. Configure home directory creation[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#configure-home-directory-creation)
+### Step 2. Configure home directory creation
 
 Workbench relies on PAM to create user home directories. Configure your operating system accordingly.
 
@@ -184,7 +184,7 @@ sudo apt install -y libpam-modules
 echo -e "\n# Posit Workbench: automatic home directory creation\nsession required pam_mkhomedir.so skel=/etc/skel/ umask=0077" | sudo tee -a /etc/pam.d/common-session
 ```
 
-### Step 3. Configure NSS module[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#configure-nss-module)
+### Step 3. Configure NSS module
 
 Workbench includes a Name Service Switch (NSS) module that allows the operating system to resolve usernames based on Workbench’s user service.
 
@@ -216,7 +216,7 @@ Workbench includes a Name Service Switch (NSS) module that allows the operating 
     If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
     
 
-### Step 4. Disable NSCD caching[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#disable-nscd-caching)
+### Step 4. Disable NSCD caching
 
 Name Service Cache Daemon (NSCD) caching can interfere with Workbench’s user provisioning. Disable it for user and group lookups.
 
@@ -248,7 +248,7 @@ If nscd is installed and running, make the following changes.
     ```
     
 
-### Step 5. Restart Workbench[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#restart-workbench)
+### Step 5. Restart Workbench
 
 ```
 sudo systemctl stop rstudio-server
@@ -264,7 +264,7 @@ sudo systemctl status rstudio-server
 sudo systemctl status rstudio-launcher
 ```
 
-### Step 6. Generate SCIM authentication token[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#generate-scim-token)
+### Step 6. Generate SCIM authentication token
 
 Workbench uses a bearer token to authenticate SCIM requests from Okta.
 
@@ -281,7 +281,7 @@ Workbench uses a bearer token to authenticate SCIM requests from Okta.
     Store this token securely. Anyone with this token can create, modify, or delete users in Workbench.
     
 
-### Step 7. Configure Okta SCIM provisioning[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#configure-okta-scim)
+### Step 7. Configure Okta SCIM provisioning
 
 Note
 
@@ -320,8 +320,7 @@ The Okta Marketplace integration for [Posit Workbench](https://www.okta.com/int
     - **Deactivate Users**
 15. Select **Save**.
 
-### Step 8. (Optional) Configure Okta SCIM group provisioning[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#enable-group-provisioning)
-
+### Step 8. (Optional) Configure Okta SCIM group provisioning
 Okta can synchronize groups assigned to the Workbench application. This is optional but recommended if you use groups for access control.
 
 1. Select the **Push Groups** tab.
@@ -331,11 +330,11 @@ Okta can synchronize groups assigned to the Workbench application. This is optio
 
 Okta now automatically provisions users assigned to the Workbench application in Workbench. Proceed to the [Verification](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#verification) section to test your configuration.
 
-## Verification[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#verification)
+## Verification
 
 After completing configuration, test that authentication and provisioning work correctly and that Workbench is able to start successfully without error messages. 
 
-### For SCIM provisioning[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#for-scim-provisioning)
+### For SCIM provisioning
 
 1. In Okta, assign a test user to both applications: the Workbench OAuth application and the Workbench SAML SCIM application.
     
@@ -352,7 +351,7 @@ After completing configuration, test that authentication and provisioning work c
 4. Verify that the user can start a session successfully.
     
 
-### For JIT provisioning[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#for-jit-provisioning)
+### For JIT provisioning
 
 1. In Okta, assign a test user to the Workbench application.
     
@@ -369,7 +368,7 @@ After completing configuration, test that authentication and provisioning work c
 4. Verify that the user can start a session successfully.
     
 
-## Related documentation[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#related-documentation)
+## Related documentation
 
 - [Posit Workbench OpenID Connect Authentication](https://docs.posit.co/ide/server-pro/admin/authenticating_users/openid_connect_authentication.html)
 - [Posit Workbench User Provisioning](https://docs.posit.co/ide/server-pro/admin/user_provisioning/user_provisioning.html)
