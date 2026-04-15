@@ -37,30 +37,30 @@ Before beginning this configuration, you must have:
 
 This guide covers two provisioning approaches. Choose the one that fits your environment.
 
-### Use System for Cross-domain Identity Management (SCIM) provisioning if you can meet all requirements
+### SCIM provisioning
 
-SCIM is the recommended approach. You can use SCIM if your environment meets these requirements:
+Generally, we recommend System for Cross-domain Identity Management (SCIM) provisioning. You can use SCIM if your environment meets these requirements:
 
 - You have configured Workbench with HTTPS using a Certificate Authority (CA) signed certificate
 - Okta must have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2`
 - You want to manage the full user lifecycle (creation, updates, deactivation) through Okta
 - You want centralized user and group management
 
-If you meet these requirements, follow the [SCIM provisioning](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#scim-provisioning) section after completing authentication configuration.
+If you meet these requirements, follow the [SCIM provisioning](#configure-okta-scim) section after completing authentication configuration.
 
-### Use Just in Time (JIT) provisioning
+### JIT provisioning
 
-JIT provisioning creates user accounts on-demand, removing the need for pre-provisioning users. It also reduces the upfront setup and ongoing maintenance typically associated with a full SCIM integration or traditional directory syncs like LDAP, SSSD, or Active Directory. JIT is simpler to configure but provides limited user lifecycle management. Use JIT if:
+Just in time (JIT) provisioning creates user accounts on-demand, removing the need for pre-provisioning users. It also reduces the upfront setup and ongoing maintenance typically associated with a full SCIM integration or traditional directory syncs like LDAP, SSSD, or Active Directory. JIT is simpler to configure but provides limited user lifecycle management. Use JIT if:
 
 - You cannot configure HTTPS with a CA-signed certificate
 - Okta does not have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2` (e.g., often the case for air-gapped Workbench deployments)
 - You do not need to manage user deactivation through Okta
 
-If you need JIT provisioning, follow the [JIT provisioning](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#jit-provisioning) section after completing authentication configuration.
+If you need JIT provisioning, follow the [JIT provisioning](#configure-user-provisioning) section after completing authentication configuration.
 
 ## Configure authentication
 
-Both provisioning strategies require OpenID Connect authentication. Complete these steps before proceeding to provisioning configuration.
+Both provisioning strategies require OIDC authentication. Complete these steps before proceeding to provisioning configuration.
 
 ### Step 1: Create the Okta application {#create-okta-application}
 
@@ -80,7 +80,7 @@ Both provisioning strategies require OpenID Connect authentication. Complete the
 11. Copy the **Client ID** and **Client secret** from the **Sign On** tab. You will need these values in the next step.
 12. Copy the URL for **OpenID Provider Metadata**. You will need this value in the next step.
 
-### Step 2: Configure Workbench for OpenID Connect {#configure-workbench-oidc}
+### Step 2: Configure Workbench for OIDC {#configure-workbench-oidc}
 
 1. On the Workbench server, create the file `/etc/rstudio/openid-client-secret`:
 
@@ -145,9 +145,6 @@ At this point, you have configured authentication. Users assigned to the Workben
 
 ### Step 1: Configure Workbench for user provisioning {#configure-user-provisioning}
 
-- [SCIM](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html)
-- [JIT](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html)
-
 1. Edit the Workbench configuration file:
 
     ```{.bash filename="Terminal"}
@@ -164,13 +161,13 @@ At this point, you have configured authentication. Users assigned to the Workben
     auth-pam-sessions-enabled=1
     ```
 
-
 ### Step 2: Configure home directory creation {#configure-home-directory}
 
 Workbench relies on PAM to create user home directories. Configure your operating system accordingly.
 
-- [Ubuntu / Debian](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html)
-- [RHEL](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html)
+::: {.panel-tabset}
+
+#### Ubuntu and Debian
 
 ```{.bash filename="Terminal"}
 # Install the PAM mkhomedir module if not already installed
@@ -181,12 +178,33 @@ sudo apt install -y libpam-modules
 echo -e "\n# Posit Workbench: automatic home directory creation\nsession required pam_mkhomedir.so skel=/etc/skel/ umask=0077" | sudo tee -a /etc/pam.d/common-session
 ```
 
+#### RHEL and Rocky
+
+```{.bash filename="Terminal"}
+# Install required packages
+sudo dnf install -y oddjob-mkhomedir authselect
+
+# Enable the oddjobd service for home directory creation
+sudo systemctl enable --now oddjobd.service
+
+# Enable the home directory creation feature
+authselect enable-feature with-mkhomedir
+authselect apply-changes
+```
+
+:::
+
 ### Step 3: Configure NSS module {#configure-nss}
 
-Workbench includes a Name Service Switch (NSS) module that allows the operating system to resolve usernames based on Workbench’s user service.
+Workbench includes a Name Service Switch (NSS) module that allows the operating system to resolve usernames based on the Workbench user service.
 
-- [Ubuntu / Debian](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html)
-- [RHEL](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html)
+:::{.callout-note}
+If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
+:::
+
+::: {.panel-tabset}
+
+#### Ubuntu and Debian
 
 1. Verify the NSS module is installed:
 
@@ -208,9 +226,30 @@ Workbench includes a Name Service Switch (NSS) module that allows the operating 
     shadow:         files pwb
     ```
 
-    :::{.callout-note}
-    If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
-    :::
+#### RHEL and Rocky
+
+1. Create an authselect profile:
+
+    ```{.bash filename="Terminal"}
+    sudo authselect create-profile pwb --base-on=minimal
+    ```
+
+2. Modify the `/etc/authselect/custom/pwb/nsswitch.conf` file to include `pwb` before `sssd` (if present), otherwise last in each row:
+
+    ```{.bash filename="/etc/authselect/custom/pwb/nsswitch.conf"}
+    passwd:         files systemd pwb
+    group:          files systemd pwb
+    shadow:         files pwb sssd
+    ```
+
+3. Once saved, update the profile:
+
+    ```{.bash filename="Terminal"}
+    sudo authselect select custom/pwb with-mkhomedir
+    sudo authselect apply-changes
+    ```
+
+:::
 
 
 ### Step 4: Disable NSCD caching {#disable-nscd}
@@ -244,7 +283,6 @@ If nscd is installed and running, make the following changes.
     sudo systemctl restart nscd
     ```
 
-
 ### Step 5: Restart Workbench {#restart-workbench}
 
 ```{.bash filename="Terminal"}
@@ -265,22 +303,19 @@ sudo systemctl status rstudio-launcher
 
 Workbench uses a bearer token to authenticate SCIM requests from Okta.
 
-1. Generate a token:
+- Generate a token and copy the value:
 
-    ```{.bash filename="Terminal"}
-    sudo rstudio-server user-service generate-token "Okta User Provisioning Token"
-    ```
+ ```{.bash filename="Terminal"}
+ sudo rstudio-server user-service generate-token "Okta User Provisioning Token"
+ ```
 
-2. Copy the token value. You will need this in the next step.
-
-    :::{.callout-important}
-    Store this token securely. Anyone with this token can create, modify, or delete users in Workbench.
-    :::
-
+::: {.callout-important}
+Store this token securely. Anyone with this token can create, modify, or delete users in Workbench.
+:::
 
 ### Step 7: Configure Okta SCIM provisioning {#configure-okta-scim}
 
-:::{.callout-note}
+::: {.callout-note}
 Only proceed with this step if you are using SCIM for user provisioning. Skip this step if you are using JIT.
 :::
 
@@ -325,7 +360,7 @@ Okta can synchronize groups assigned to the Workbench application. This is optio
 3. Find the group you want to push and select **Save**.
 4. If successful, the **Push Status** changes to **Active**.
 
-Okta now automatically provisions users assigned to the Workbench application in Workbench. Proceed to the [Verification](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#verification) section to test your configuration.
+Okta now automatically provisions users assigned to the Workbench application in Workbench. Proceed to the [Verification](#verification) section to test your configuration.
 
 ## Verification
 

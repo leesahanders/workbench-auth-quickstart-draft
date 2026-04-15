@@ -41,30 +41,32 @@ If configuring with Slurm, additional networking considerations apply. See the [
 
 ## Choose your user provisioning strategy
 
-### Use System for Cross-domain Identity Management (SCIM) provisioning if you can meet all requirements
+This guide covers two provisioning approaches. Choose the one that fits your environment.
 
-SCIM is the recommended approach. You can use SCIM if your environment meets these requirements:
+### SCIM provisioning
+
+Generally, we recommend System for Cross-domain Identity Management (SCIM) provisioning. You can use SCIM if your environment meets these requirements:
 
 - You have configured Workbench with HTTPS using a Certificate Authority (CA) signed certificate
 - EntraID must have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2`
 - You want to manage the full user lifecycle (creation, updates, deactivation) through EntraID
 - You want centralized user and group management
 
-If you meet these requirements, follow the [SCIM provisioning TODO]() section after completing authentication configuration.
+If you meet these requirements, follow the [SCIM provisioning](#configure-scim) section after completing authentication configuration.
 
-### Use Just in Time (JIT) provisioning
+### JIT provisioning
 
-JIT provisioning creates user accounts on-demand, removing the need for pre-provisioning users. It also reduces the upfront setup and ongoing maintenance typically associated with a full SCIM integration or traditional directory syncs like LDAP, SSSD, or Active Directory. JIT is simpler to configure but provides limited user lifecycle management. Use JIT if:
+Just in time (JIT) provisioning creates user accounts on-demand, removing the need for pre-provisioning users. It also reduces the upfront setup and ongoing maintenance typically associated with a full SCIM integration or traditional directory syncs like LDAP, SSSD, or Active Directory. JIT is simpler to configure but provides limited user lifecycle management. Use JIT if:
 
 - You cannot configure HTTPS with a CA-signed certificate
 - EntraID does not have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2` (e.g., often the case for air-gapped Workbench deployments)
 - You do not need to manage user deactivation through EntraID
 
-If you need JIT provisioning, follow the [JIT provisioning TODO]() section after completing authentication configuration.
+If you need JIT provisioning, follow the [JIT provisioning](#configure-jit) section after completing authentication configuration.
 
 ## Configure authentication
 
-Both provisioning strategies require OpenID Connect authentication. Complete these steps before proceeding to user provisioning configuration.
+Both provisioning strategies require OIDC authentication. Complete these steps before proceeding to user provisioning configuration.
 
 In addition to access to the hosted web domain, Workbench users need to be provisioned as linux users with a home directory.
 
@@ -90,7 +92,7 @@ EntraID has a notion of app registration and enterprise application. The app reg
 If the provisioning pane is not visible from the enterprise application, delete the app registration and re-start the creation, beginning with the enterprise application and the option to "integrate with an un-listed app".
 :::
 
-### Step 2: Configure Workbench for OpenID Connect {#configure-workbench-oidc}
+### Step 2: Configure Workbench for OIDC {#configure-workbench-oidc}
 
 ### Step 3: Encrypt secrets {#encrypt-secrets}
 
@@ -362,8 +364,16 @@ client-id="example-example-example-example-example"
 client-secret="example"
 ```
 
-## Related resources
+## Related documentation
 
+- [Posit Workbench OpenID Connect Authentication](https://docs.posit.co/ide/server-pro/admin/authenticating_users/openid_connect_authentication.html)
+- [Enabling OpenID Connect](https://docs.posit.co/ide/server-pro/admin/authenticating_users/openid_connect_authentication.html#enabling-openid-connect)
+- [Configuring Microsoft Entra ID for SAML in Posit Workbench](https://docs.posit.co/ide/server-pro/admin/authenticating_users/integrated_providers/azure_ad_saml.html)
+- [Microsoft Entra ID with OpenID Connect (Posit Connect)](https://docs.posit.co/connect/admin/authentication/oauth2-openid-based/entra-id-openid-connect/#configuration)
+- [Posit Workbench User Provisioning](https://docs.posit.co/ide/server-pro/admin/user_provisioning/user_provisioning.html)
+- [Posit Workbench Just-in-Time Provisioning](https://docs.posit.co/ide/server-pro/admin/user_provisioning/just_in_time_provisioning.html)
+
+<!-- internal resources
 Azure OIDC Custom Claim - Edited Configuration: <https://positpbc.atlassian.net/wiki/spaces/SE/pages/1487011966/Azure+OIDC+Custom+Claim+-+Edited+Configuration>
 
 Azure OIDC Custom Claim Configuration: https://positpbc.atlassian.net/wiki/spaces/SE/pages/1655963671/Azure+OIDC+Custom+Claim+Configuration
@@ -371,12 +381,6 @@ Azure OIDC Custom Claim Configuration: https://positpbc.atlassian.net/wiki/space
 Azure OIDC Custom Claims - Configuration with Workbench and Connect examples: <https://positpbc.atlassian.net/wiki/spaces/SE/pages/1487011966/Azure+OIDC+Custom+Claims+-+Configuration+with+Workbench+and+Connect+examples
 
 2023-10-31 Setting up Workbench with Microsoft Entra ID using OIDC: <https://positpbc.atlassian.net/wiki/spaces/SE/pages/491389027/2023-10-31+Setting+up+Workbench+with+Microsoft+Entra+ID+using+OIDC>
-
-Configuring Microsoft Entra ID for SAML in Posit Workbench: <https://docs.posit.co/ide/server-pro/admin/authenticating_users/integrated_providers/azure_ad_saml.html>
-
-Enabling OpenID Connect: <https://docs.posit.co/ide/server-pro/admin/authenticating_users/openid_connect_authentication.html#enabling-openid-connect>
-
-Microsoft Entra ID (using OpenID Connect): <https://docs.posit.co/connect/admin/authentication/oauth2-openid-based/entra-id-openid-connect/#configuration>
 
 How-To Guide for JIT Implementation (heavily drawn from): <https://github.com/rstudio/docs.rstudio.com/pull/2457>
 
@@ -401,4 +405,4 @@ Other auth guides:
 - <https://pub.current.posit.team/public/How-To-JIT/implementing_jit_provisioning.html>
 - <https://pub.demo.posit.team/content/b42332f5-06da-49a0-9914-d1bc2c1ef8c9/>
 - <https://connect.posit.it/connect/#/apps/055ff32f-42e1-4652-b651-8e5d01b4f2d1/5101>
-
+-->
