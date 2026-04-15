@@ -537,6 +537,8 @@ Configuring LDAP / Active Directory with Posit Team: <https://solutions.posit.co
 
 How to JIT by SamC: <https://pub.current.posit.team/public/How-To-JIT/implementing_jit_provisioning.html>
 
+Katie's user provisioning page: <https://positpbc.atlassian.net/wiki/spaces/SE/pages/1172177012/Workbench+user+provisioning+set+up+SCIM+JIT> 
+
 Other auth guides: 
 
 - <https://pub.current.posit.team/public/How-To-JIT/implementing_jit_provisioning.html> 
