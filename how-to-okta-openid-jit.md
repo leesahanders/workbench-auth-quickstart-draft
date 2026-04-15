@@ -333,7 +333,7 @@ Okta now automatically provisions users assigned to the Workbench application in
 
 ## Verification[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#verification)
 
-After completing configuration, test that authentication and provisioning work correctly.
+After completing configuration, test that authentication and provisioning work correctly and that Workbench is able to start successfully without error messages. 
 
 ### For SCIM provisioning[](https://connect.posit.it/content/055ff32f-42e1-4652-b651-8e5d01b4f2d1/vQKa4NXpt/pwb-okta-guide.html#for-scim-provisioning)
 
