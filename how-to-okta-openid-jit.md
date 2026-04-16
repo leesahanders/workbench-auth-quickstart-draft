@@ -37,17 +37,6 @@ Before beginning this configuration, you must have:
 
 This guide covers two provisioning approaches. Choose the one that fits your environment.
 
-### SCIM provisioning
-
-Generally, we recommend System for Cross-domain Identity Management (SCIM) provisioning. You can use SCIM if your environment meets these requirements:
-
-- You have configured Workbench with HTTPS using a Certificate Authority (CA) signed certificate
-- Okta must have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2`
-- You want to manage the full user lifecycle (creation, updates, deactivation) through Okta
-- You want centralized user and group management
-
-If you meet these requirements, follow the [SCIM provisioning](#configure-okta-scim) section after completing authentication configuration.
-
 ### JIT provisioning
 
 Just in time (JIT) provisioning creates user accounts on-demand, removing the need for pre-provisioning users. It also reduces the upfront setup and ongoing maintenance typically associated with a full SCIM integration or traditional directory syncs like LDAP, SSSD, or Active Directory. JIT is simpler to configure but provides limited user lifecycle management. Use JIT if:
@@ -57,6 +46,17 @@ Just in time (JIT) provisioning creates user accounts on-demand, removing the ne
 - You do not need to manage user deactivation through Okta
 
 If you need JIT provisioning, follow the [JIT provisioning](#configure-user-provisioning) section after completing authentication configuration.
+
+### SCIM provisioning
+
+SCIM provisioning is a good option to consider for its ability to to create and manage assignemnt of users to group if that is needed for downstream workflows. You can use SCIM if your environment meets these requirements:
+
+- You have configured Workbench with HTTPS using a Certificate Authority (CA) signed certificate
+- Okta must have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2`
+- You want to manage the full user lifecycle (creation, updates, deactivation) through Okta
+- You want centralized user and group management
+
+If you meet these requirements, follow the [SCIM provisioning](#configure-okta-scim) section after completing authentication configuration.
 
 ## Configure authentication
 
@@ -80,78 +80,116 @@ Both provisioning strategies require OIDC authentication. Complete these steps b
 11. Copy the **Client ID** and **Client secret** from the **Sign On** tab. You will need these values in the next step.
 12. Copy the URL for **OpenID Provider Metadata**. You will need this value in the next step.
 
-### Step 2: Configure Workbench for OIDC {#configure-workbench-oidc}
+### Step 2: Encrypt secrets {#encrypt-secrets}
 
-1. On the Workbench server, create the file `/etc/rstudio/openid-client-secret`:
+1. On the Workbench server, encrypt your client secret following the [documented encryption steps in the Workbench Admin Guide](https://docs.posit.co/ide/server-pro/admin/hardening/encryption.html#step-re-encrypt-configuration-values):
 
-    ```{.bash filename="Terminal"}
-    sudo nano /etc/rstudio/openid-client-secret
-    ```
+```{.bash filename="Terminal"}
+sudo rstudio-server encrypt-password
+```
+
+### Step 3: Configure Workbench for user authentication with OIDC {#configure-workbench-oidc}
+
+1. On the Workbench server, create the file `/etc/rstudio/openid-client-secret` that will include the parameters for the encrypted client secret and the client-id.
 
 2. Add the following content, replacing the placeholder values with your Client ID and Client secret from Step 1:
 
-    ```{.bash filename="/etc/rstudio/openid-client-secret"}
-    client-id=<your-client-id>
-    client-secret=<your-client-secret>
-    ```
+```{.bash filename="/etc/rstudio/openid-client-secret"}
+client-id=<your-client-id>
+client-secret=<your-client-secret>
+```
 
-3. Set proper permissions on the file:
+3. Set proper permissions on the `openid-client-secret` file:
 
-    ```{.bash filename="Terminal"}
-    sudo chmod 0600 /etc/rstudio/openid-client-secret
-    sudo chown rstudio-server:rstudio-server /etc/rstudio/openid-client-secret
-    ```
+```{.bash filename="Terminal"}
+sudo chmod 0600 /etc/rstudio/openid-client-secret
+sudo chown rstudio-server:rstudio-server /etc/rstudio/openid-client-secret
+```
 
 4. In a web browser, open the metadata URL you copied in Step 1. The URL returns a JSON document containing the Okta OpenID configuration.
 
 5. In the JSON document, locate the `issuer` value. Copy this value.
 
-6. Edit the Workbench configuration file:
-
-    ```{.bash filename="Terminal"}
-    sudo nano /etc/rstudio/rserver.conf
-    ```
+6. Open the Workbench configuration file `/etc/rstudio/rserver.conf` to edit it to use openid.
 
 7. Add the following lines, replacing `<issuer-url>` with the issuer value from Step 5:
 
-    ```{.bash filename="/etc/rstudio/rserver.conf"}
-    # Enable OpenID Connect authentication
-    auth-openid=1
+```{.bash filename="/etc/rstudio/rserver.conf"}
+# Enable OpenID Connect authentication
+auth-openid=1
 
-    # Configure Okta as the OpenID provider
-    auth-openid-issuer=<issuer-url>
+# Configure Okta as the OpenID provider
+auth-openid-issuer=<issuer-url>
 
-    # Configure username claim
-    auth-openid-username-claim=preferred_username
-    ```
+# Configure username claim
+auth-openid-username-claim=preferred_username
+```
 
 8. Restart Workbench services:
 
-    ```{.bash filename="Terminal"}
-    sudo systemctl restart rstudio-server
-    sudo systemctl restart rstudio-launcher
-    ```
+```{.bash filename="Terminal"}
+sudo systemctl restart rstudio-server
+sudo systemctl restart rstudio-launcher
+```
 
 9. Verify that Workbench has restarted successfully:
 
-    ```{.bash filename="Terminal"}
-    sudo systemctl status rstudio-server
-    ```
-
+```{.bash filename="Terminal"}
+sudo systemctl status rstudio-server
+```
 
 At this point, you have configured authentication. Users assigned to the Workbench application in Okta can authenticate, but they cannot start sessions until you configure user provisioning.
 
 ## User provisioning
 
+Workbench requires users to have local or networked system accounts. These need to be linux users complete with home directories.
+
+You must set up local system accounts by using `useradd` or network services such as LDAP or Active Directory, and then map authenticating users to these accounts.
+
+### Manual setup (recommended for trials)
+
+If you do not have many users and do not expect many changes in usership, individual provisioning might be the easiest choice. Similarly, if there are issues with the other provisioning methods, this is always an option.
+
+The username must match the preferred_username claim from Entra ID. Alternatively, you can configure Workbench to use a different claim with the `auth-openid-username-claim=` parameter in `/etc/rstudio/rserver.conf`.
+
+```{.bash filename="Terminal"}
+# Provision users
+sudo useradd myusername -m
+
+# Add users to Workbench group
+sudo groupadd workbench-users
+```
+
 ### Step 1: Configure Workbench for user provisioning {#configure-user-provisioning}
+
+#### JIT
+
+JIT provisioning creates user accounts automatically when users log in for the first time. Unlike SCIM, JIT does not synchronize user deactivation or support group provisioning.
+
+1. Open the Workbench configuration file `/etc/rstudio/rserver.conf` to edit it for JIT. 
+    
+2. Add the following lines:
+    
+```{.bash filename="/etc/rstudio/rserver.conf"}
+# Enable user provisioning
+user-provisioning-enabled=1
+
+# Enable user provisioning with JIT registration instead of SCIM
+user-provisioning-register-on-first-login=1
+
+# Enable Pluggable Authentication Modules (PAM) sessions for home directory creation
+auth-pam-sessions-enabled=1
+
+# Optional: Configure starting UID (default is 1000)
+#user-provisioning-start-uid=1000
+
+# Optional: Set custom home directory path (default is /home)
+#user-homedir-path=/mnt/home
+```
 
 #### SCIM
 
-1. Edit the Workbench configuration file:
-
-    ```{.bash filename="Terminal"}
-    sudo nano /etc/rstudio/rserver.conf
-    ```
+1. Open the Workbench configuration file `/etc/rstudio/rserver.conf` to edit it for SCIM.
 
 2. Add the following lines:
 
@@ -159,29 +197,6 @@ At this point, you have configured authentication. Users assigned to the Workben
     # Enable user provisioning
     user-provisioning-enabled=1
 
-    # Enable Pluggable Authentication Modules (PAM) sessions for home directory creation
-    auth-pam-sessions-enabled=1
-    ```
-
-#### JIT
-
-JIT provisioning creates user accounts automatically when users log in for the first time. Unlike SCIM, JIT does not synchronize user deactivation or support group provisioning.
-
-1. Edit the Workbench configuration file:
-    
-    ```
-    sudo nano /etc/rstudio/rserver.conf
-    ```
-    
-2. Add the following lines:
-    
-    ```
-    # Enable user provisioning
-    user-provisioning-enabled=1
-    
-    # Enable user provisioning with JIT registration instead of SCIM
-    user-provisioning-register-on-first-login=1
-    
     # Enable Pluggable Authentication Modules (PAM) sessions for home directory creation
     auth-pam-sessions-enabled=1
     ```
@@ -223,85 +238,70 @@ sudo authselect apply-changes
 
 Workbench includes a Name Service Switch (NSS) module that allows the operating system to resolve usernames based on the Workbench user service.
 
-:::{.callout-note}
-If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
-:::
-
 ::: {.panel-tabset}
 
 #### Ubuntu and Debian
 
 1. Verify the NSS module is installed:
 
-    ```{.bash filename="Terminal"}
-    ls -l /usr/lib/x86_64-linux-gnu/libnss_pwb.so.2
-    ```
+```{.bash filename="Terminal"}
+ls -l /usr/lib/x86_64-linux-gnu/libnss_pwb.so.2
+```
 
-2. Edit the NSS configuration:
+2. Modify the`/etc/nsswitch.conf` NSS configuration file lines `passwd`, `group`, and `shadow` to include `pwb` if it is not already included:
 
-    ```{.bash filename="Terminal"}
-    sudo nano /etc/nsswitch.conf
-    ```
+```{.bash filename="/etc/nsswitch.conf"}
+passwd:         files systemd pwb
+group:          files systemd pwb
+shadow:         files pwb
+```
 
-3. Modify the `passwd`, `group`, and `shadow` lines to include `pwb` if it is not already included:
-
-    ```{.bash filename="/etc/nsswitch.conf"}
-    passwd:         files systemd pwb
-    group:          files systemd pwb
-    shadow:         files pwb
-    ```
-
-If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
+:::{.callout-note}
+If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
+:::
 
 #### RHEL and Rocky
 
 1. Verify the NSS module is installed:
     
-    ```
+    ```{.bash filename="Terminal"}
     ls -l /usr/lib64/libnss_pwb.so.2
     ```
     
 2. Create a custom authselect profile:
     
-    ```
-    sudo authselect create-profile pwb --base-on=minimal
-    ```
+```{.bash filename="Terminal"}
+sudo authselect create-profile pwb --base-on=minimal
+```
     
-    Note
+:::{.callout-note}
+ If you have SSSD configured, use `--base-on=sssd` instead of `--base-on=minimal`.
+:::
     
-    If you have SSSD configured, use `--base-on=sssd` instead of `--base-on=minimal`.
+3. Modify the `passwd`, `group`, and `shadow` lines to include `pwb` in the profile configuration `/etc/authselect/custom/pwb/nsswitch.conf`:
     
-3. Edit the profile configuration:
-    
-    ```
-    sudo nano /etc/authselect/custom/pwb/nsswitch.conf
-    ```
-    
-4. Modify the `passwd`, `group`, and `shadow` lines to include `pwb`:
-    
-    ```
+    ```{.bash filename="/etc/authselect/custom/pwb/nsswitch.conf"}
     passwd:     files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-passwd"}
     group:      files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-group"}
     shadow:     files pwb                                       {exclude if "with-custom-shadow"}
     ```
     
-    Note
-    
-    If you have SSSD configured, ensure `pwb` appears before `sssd` to prioritize Workbench users.
+:::{.callout-note}
+If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
+:::
     
 5. Activate the profile:
-    
-    ```
-    sudo authselect select custom/pwb with-mkhomedir
-    sudo authselect apply-changes
-    ```
+
+```{.bash filename="Terminal"}
+sudo authselect select custom/pwb with-mkhomedir
+sudo authselect apply-changes
+```
 
 :::
 
-
 ### Step 4: Disable NSCD caching {#disable-nscd}
 
-Name Service Cache Daemon (NSCD) caching can interfere with the Workbench user provisioning process. Disable it for user and group lookups.
+Name Service Cache Daemon (NSCD) caching can interfere with the Workbench user provisioning process. Disable it for user and group lookups. Workbench user provisioning implements its own caching mechanism, preventing impact to performance. 
 
 First, check if you are using nscd:
 
@@ -311,42 +311,21 @@ sudo systemctl status nscd
 
 If nscd is installed and running, make the following changes.
 
-1. Edit the NSCD configuration:
 
-    ```{.bash filename="Terminal"}
-    sudo nano /etc/nscd.conf
-    ```
-
-2. Add or modify these lines:
+1. Add or modify these lines:
 
     ```{.ini filename="/etc/nscd.conf"}
     enable-cache passwd no
     enable-cache group no
     ```
 
-3. Restart NSCD:
+2. Restart NSCD:
 
     ```{.bash filename="Terminal"}
     sudo systemctl restart nscd
     ```
 
-### Step 5: Restart Workbench {#restart-workbench}
-
-```{.bash filename="Terminal"}
-sudo systemctl stop rstudio-server
-sudo systemctl stop rstudio-launcher
-sudo systemctl start rstudio-launcher
-sudo systemctl start rstudio-server
-```
-
-Verify that Workbench has restarted successfully:
-
-```{.bash filename="Terminal"}
-sudo systemctl status rstudio-server
-sudo systemctl status rstudio-launcher
-```
-
-### Step 6: Generate SCIM authentication token {#generate-scim-token}
+### Step 6: Generate the SCIM authentication token {#generate-scim-token}
 
 Workbench uses a bearer token to authenticate SCIM requests from Okta.
 
@@ -400,6 +379,7 @@ The Okta Marketplace integration for [Workbench](https://www.okta.com/integratio
 15. Select **Save**.
 
 ### Step 8: (Optional) Configure Okta SCIM group provisioning {#configure-scim-groups}
+
 Okta can synchronize groups assigned to the Workbench application. This is optional but recommended if you use groups for access control.
 
 1. Select the **Push Groups** tab.
@@ -407,28 +387,28 @@ Okta can synchronize groups assigned to the Workbench application. This is optio
 3. Find the group you want to push and select **Save**.
 4. If successful, the **Push Status** changes to **Active**.
 
+
+### Step 9: Restart Workbench {#restart-workbench}
+
+```{.bash filename="Terminal"}
+sudo systemctl stop rstudio-server
+sudo systemctl stop rstudio-launcher
+sudo systemctl start rstudio-launcher
+sudo systemctl start rstudio-server
+```
+
+Verify that Workbench has restarted successfully:
+
+```{.bash filename="Terminal"}
+sudo systemctl status rstudio-server
+sudo systemctl status rstudio-launcher
+```
+
 Okta now automatically provisions users assigned to the Workbench application in Workbench. Proceed to the [Verification](#verification) section to test your configuration.
 
 ## Verification
 
 After completing configuration, test that authentication and provisioning work correctly and that Workbench is able to start successfully without error messages.
-
-### For SCIM provisioning
-
-1. In Okta, assign a test user to both applications: the Workbench OAuth application and the Workbench SAML SCIM application.
-
-2. Verify that Workbench provisioned the user:
-
-    ```{.bash filename="Terminal"}
-    sudo rstudio-server list-users
-    ```
-
-    The test user should appear in the output.
-
-3. Have the test user navigate to the Workbench URL and sign in using their Okta credentials.
-
-4. Verify that the user can start a session successfully.
-
 
 ### For JIT provisioning
 
@@ -446,6 +426,31 @@ After completing configuration, test that authentication and provisioning work c
 
 4. Verify that the user can start a session successfully.
 
+### For SCIM provisioning
+
+1. In Okta, assign a test user to both applications: the Workbench OAuth application and the Workbench SAML SCIM application.
+
+2. Verify that Workbench provisioned the user:
+
+    ```{.bash filename="Terminal"}
+    sudo rstudio-server list-users
+    ```
+
+    The test user should appear in the output.
+
+3. Have the test user navigate to the Workbench URL and sign in using their Okta credentials.
+
+4. Verify that the user can start a session successfully.
+
+## Troubleshooting
+
+Use the [pamtester](https://docs.posit.co/ide/server-pro/admin/access_and_security/pam_sessions.html#testing-and-troubleshooting) utility for additional testing:
+
+```{.bash filename="Terminal"}
+/usr/lib/rstudio-server/bin/pamtester --verbose rstudio <user> authenticate acct_mgmt setcred open_session close_session
+```
+
+In case of issues, you can reach out to our [support team](https://docs.posit.co/support.html). Please make sure to include a copy of your diagnostic as well as all error messages and screenshots of your configured applications in Okta.
 
 ## Related documentation
 

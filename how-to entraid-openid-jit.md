@@ -43,17 +43,6 @@ If configuring with Slurm, additional networking considerations apply. See the [
 
 This guide covers two provisioning approaches. Choose the one that fits your environment.
 
-### SCIM provisioning
-
-Generally, we recommend System for Cross-domain Identity Management (SCIM) provisioning. You can use SCIM if your environment meets these requirements:
-
-- You have configured Workbench with HTTPS using a Certificate Authority (CA) signed certificate
-- EntraID must have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2`
-- You want to manage the full user lifecycle (creation, updates, deactivation) through EntraID
-- You want centralized user and group management
-
-If you meet these requirements, follow the [SCIM provisioning](#configure-scim) section after completing authentication configuration.
-
 ### JIT provisioning
 
 Just in time (JIT) provisioning creates user accounts on-demand, removing the need for pre-provisioning users. It also reduces the upfront setup and ongoing maintenance typically associated with a full SCIM integration or traditional directory syncs like LDAP, SSSD, or Active Directory. JIT is simpler to configure but provides limited user lifecycle management. Use JIT if:
@@ -63,6 +52,19 @@ Just in time (JIT) provisioning creates user accounts on-demand, removing the ne
 - You do not need to manage user deactivation through EntraID
 
 If you need JIT provisioning, follow the [JIT provisioning](#configure-jit) section after completing authentication configuration.
+
+### SCIM provisioning
+
+SCIM provisioning is a good option to consider for its ability to to create and manage assignemnt of users to group if that is needed for downstream workflows. You can use SCIM if your environment meets these requirements:
+
+Generally, we recommend System for Cross-domain Identity Management (SCIM) provisioning. You can use SCIM if your environment meets these requirements:
+
+- You have configured Workbench with HTTPS using a Certificate Authority (CA) signed certificate
+- EntraID must have connectivity to the Workbench SCIM API endpoints at `https://<workbench-hostname>/scim/v2`
+- You want to manage the full user lifecycle (creation, updates, deactivation) through EntraID
+- You want centralized user and group management
+
+If you meet these requirements, follow the [SCIM provisioning](#configure-scim) section after completing authentication configuration.
 
 ## Configure authentication
 
@@ -92,9 +94,9 @@ EntraID has a notion of app registration and enterprise application. The app reg
 If the provisioning pane is not visible from the enterprise application, delete the app registration and re-start the creation, beginning with the enterprise application and the option to "integrate with an un-listed app".
 :::
 
-### Step 2: Configure Workbench for OIDC {#configure-workbench-oidc}
 
-### Step 3: Encrypt secrets {#encrypt-secrets}
+
+### Step 2: Encrypt secrets {#encrypt-secrets}
 
 1. On the Workbench server, encrypt your client secret following the [documented encryption steps in the Workbench Admin Guide](https://docs.posit.co/ide/server-pro/admin/hardening/encryption.html#step-re-encrypt-configuration-values):
 
@@ -102,39 +104,57 @@ If the provisioning pane is not visible from the enterprise application, delete 
 sudo rstudio-server encrypt-password
 ```
 
-### Step 4: Configure Workbench for user authentication {#configure-workbench-auth}
+### Step 3: Configure Workbench for user authentication with OIDC {#configure-workbench-oidc}
 
-Create a file `/etc/rstudio/openid-client-secret` that will include the parameters for the encrypted client secret and the client-id.
+1. On the Workbench server, create the file `/etc/rstudio/openid-client-secret` that will include the parameters for the encrypted client secret and the client-id.
+
+2. Add the following content, replacing the placeholder values with your Client ID and Client secret from Step 1:
 
 ```{.bash filename="/etc/rstudio/openid-client-secret"}
-client-id="example-example-example-example-example"
-client-secret="example"
+client-id=<your-client-id>
+client-secret=<your-client-secret>
 ```
 
 The `client id` is the `Application (client) ID` from EntraID. The `client secret` is the encrypted value from above that came from the `Client Secret Value` field in EntraID.
 
-Protect the `openid-client-secret` file to restrict access:
+3. Set proper permissions on the `openid-client-secret` file:
 
 ```{.bash filename="Terminal"}
 sudo chmod 0600 /etc/rstudio/openid-client-secret
 sudo chown rstudio-server:rstudio-server /etc/rstudio/openid-client-secret
 ```
 
-Edit the `/etc/rstudio/rserver.conf` file to use openid.
+4. Open the Workbench configuration file `/etc/rstudio/rserver.conf` to edit it to use openid.
+
+5. Add the following lines, replacing `<issuer-url>` with the issuer value from Step 5:
 
 ```{.bash filename="/etc/rstudio/rserver.conf"}
-    # Enable OpenID Connect authentication
-    auth-openid=1
+# Enable OpenID Connect authentication
+auth-openid=1
 
-    # Configure Entra ID as the OpenID provider
-    auth-openid-issuer="https://login.microsoftonline.com/{tenant-id}/v2.0"
+# Configure Entra ID as the OpenID provider
+auth-openid-issuer=<issuer-url>
 
-    # Configure username claim (usually email or UPN)
-    auth-openid-username-claim=preferred_username
+# Configure username claim (usually email or UPN)
+auth-openid-username-claim=preferred_username
 ```
 
-The `auth-openid-issuer` value will be "https://login.microsoftonline.com/{tenant-id}/v2.0".
+The `auth-openid-issuer` value will be of the form "https://login.microsoftonline.com/{tenant-id}/v2.0".
 
+8. Restart Workbench services:
+
+```{.bash filename="Terminal"}
+sudo systemctl restart rstudio-server
+sudo systemctl restart rstudio-launcher
+```
+
+9. Verify that Workbench has restarted successfully:
+
+```{.bash filename="Terminal"}
+sudo systemctl status rstudio-server
+```
+
+At this point, you have configured authentication. Users assigned to the Workbench application in EntraID can authenticate, but they cannot start sessions until you configure user provisioning.
 
 ## User provisioning
 
@@ -142,20 +162,65 @@ Workbench requires users to have local or networked system accounts. These need 
 
 You must set up local system accounts by using `useradd` or network services such as LDAP or Active Directory, and then map authenticating users to these accounts.
 
-
-### Release valve: manual provisioning
+### Manual setup (recommended for trials)
 
 If you do not have many users and do not expect many changes in usership, individual provisioning might be the easiest choice. Similarly, if there are issues with the other provisioning methods, this is always an option.
 
 The username must match the preferred_username claim from Entra ID. Alternatively, you can configure Workbench to use a different claim with the `auth-openid-username-claim=` parameter in `/etc/rstudio/rserver.conf`.
 
 ```{.bash filename="Terminal"}
-sudo useradd myusername@mycompany.com -m
+# Provision users
+sudo useradd myusername -m
+
+# Add users to Workbench group
+sudo groupadd workbench-users
 ```
 
-### Step 1: Install system dependencies {#install-system-dependencies}
+### Step 1: Configure Workbench for user provisioning {#configure-user-provisioning}
 
-Install system dependencies as the root user. While not always required, completing the install as root will make things go smoother.
+#### JIT
+
+1. Open the Workbench configuration file `/etc/rstudio/rserver.conf` to edit it for JIT. 
+
+    
+2. Add the following lines:
+
+```{.bash filename="/etc/rstudio/rserver.conf"}
+# Enable user provisioning
+user-provisioning-enabled=1
+
+# Enable user provisioning with JIT registration instead of SCIM
+user-provisioning-register-on-first-login=1
+
+# Enable Pluggable Authentication Modules (PAM) sessions for home directory creation
+auth-pam-sessions-enabled=1
+
+# Optional: Configure starting UID (default is 1000)
+#user-provisioning-start-uid=1000
+
+# Optional: Set custom home directory path (default is /home)
+#user-homedir-path=/mnt/home
+```
+
+#### SCIM
+
+1. Open the Workbench configuration file `/etc/rstudio/rserver.conf` to edit it for SCIM.
+
+2. Add the following lines:
+
+    ```{.bash filename="/etc/rstudio/rserver.conf"}
+    # Enable user provisioning
+    user-provisioning-enabled=1
+
+    # Enable Pluggable Authentication Modules (PAM) sessions for home directory creation
+    auth-pam-sessions-enabled=1
+    ```
+
+### Step 2: Configure home directory creation {#configure-home-directory}
+
+Workbench relies on PAM to create user home directories. Configure your operating system accordingly.
+
+::: {.panel-tabset}
 
 #### Ubuntu and Debian
 
@@ -164,7 +229,7 @@ Install system dependencies as the root user. While not always required, complet
 sudo apt update
 sudo apt install -y libpam-modules
 
-# Edit the PAM configuration to add a line to automatically create user home directories in common-session
+# Configure automatic home directory creation
 echo "session required pam_mkhomedir.so skel=/etc/skel/ umask=0022" | sudo tee -a /etc/pam.d/common-session
 ```
 
@@ -182,28 +247,54 @@ authselect enable-feature with-mkhomedir
 authselect apply-changes
 ```
 
-### Step 2: Configure the NSS module {#configure-nss}
+:::
+
+### Step 3: Configure NSS module {#configure-nss}
+
+Workbench includes a Name Service Switch (NSS) module that allows the operating system to resolve usernames based on the Workbench user service.
+
+::: {.panel-tabset}
 
 #### Ubuntu and Debian
 
-Modify the `/etc/nsswitch.conf` file to include pwb before sssd (if present), otherwise last in each row. For example it might look something like this (remember to only add pwb, no other parameters):
+1. Verify the NSS module is installed:
+
+```{.bash filename="Terminal"}
+ls -l /usr/lib/x86_64-linux-gnu/libnss_pwb.so.2
+```
+
+2. Modify the`/etc/nsswitch.conf` NSS configuration file lines `passwd`, `group`, and `shadow` to include `pwb` if it is not already included:
 
 ```{.bash filename="/etc/nsswitch.conf"}
 # Modify the passwd, group, and shadow lines to include pwb at the end
 passwd:         files systemd pwb
 group:          files systemd pwb
-shadow:         files pwb sssd
+shadow:         files pwb
 ```
+
+:::{.callout-note}
+If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
+:::
 
 #### RHEL and Rocky
 
-Create an authselect profile:
+1. Verify the NSS module is installed:
+    
+    ```{.bash filename="Terminal"}
+    ls -l /usr/lib64/libnss_pwb.so.2
+    ```
+
+2. Create a custom authselect profile:
 
 ```{.bash filename="Terminal"}
 sudo authselect create-profile pwb --base-on=minimal
 ```
 
-Modify the `/etc/authselect/custom/pwb/nsswitch.conf` file to include pwb before sssd (if present), otherwise last in each row. For example it might look something like this (remember to only add pwb, no other parameters):
+:::{.callout-note}
+ If you have SSSD configured, use `--base-on=sssd` instead of `--base-on=minimal`.
+:::
+
+3. Modify the `passwd`, `group`, and `shadow` lines to include `pwb` in the profile configuration `/etc/authselect/custom/pwb/nsswitch.conf`:
 
 ```{.bash filename="/etc/authselect/custom/pwb/nsswitch.conf"}
 # Modify the passwd, group, and shadow lines to include pwb at the end
@@ -212,48 +303,43 @@ group:          files systemd pwb
 shadow:         files pwb sssd
 ```
 
-Once saved, update the profile with:
+:::{.callout-note}
+If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
+:::
+
+5. Activate the profile:
 
 ```{.bash filename="Terminal"}
-# Enable the custom profile with mkhomedir support
 sudo authselect select custom/pwb with-mkhomedir
 sudo authselect apply-changes
 ```
 
-### Step 3: Disable NSCD caching {#disable-nscd}
+### Step 4: Disable NSCD caching {#disable-nscd}
 
-Name Service Cache Daemon (NSCD) caching can cause issues with the Workbench user provisioning process, and so must be disabled by following the steps below. Disabling these caches does not affect system performance, as Workbench user provisioning implements its own caching mechanism.
+Name Service Cache Daemon (NSCD) caching can interfere with the Workbench user provisioning process. Disable it for user and group lookups. Workbench user provisioning implements its own caching mechanism, preventing impact to performance. 
 
-If NSCD caching utilities are not installed, continue to the next step.
+First, check if you are using nscd:
 
-```{.ini filename="/etc/nscd.conf"}
-# Add or modify the following lines
-enable-cache passwd no
-enable-cache group no
+```{.bash filename="Terminal"}
+sudo systemctl status nscd
 ```
 
-### Step 4: Configure JIT provisioning for Workbench {#configure-jit}
+If nscd is installed and running, make the following changes.
 
-Update the `/etc/rstudio/rserver.conf` config file to enable user provisioning with JIT:
+1. Add or modify these lines:
 
-```{.bash filename="/etc/rstudio/rserver.conf"}
-# Add the following lines
-user-provisioning-enabled=1
-user-provisioning-register-on-first-login=1
+    ```{.ini filename="/etc/nscd.conf"}
+    enable-cache passwd no
+    enable-cache group no
+    ```
 
-# Add the following line to enable PAM sessions
-auth-pam-sessions-enabled=1
+2. Restart NSCD:
 
-# Optional: Configure starting UID (default is 1000)
-#user-provisioning-start-uid=1000
+    ```{.bash filename="Terminal"}
+    sudo systemctl restart nscd
+    ```
 
-# Optional: Set custom home directory path (default is /home)
-#user-homedir-path=/mnt/home
-```
-
-### Step 5: (Optional) Configure Entra ID SCIM provisioning {#configure-scim}
-
-If you are using SCIM instead of JIT:
+### Step 6: Generate SCIM authentication token {#generate-scim-token}
 
 1. Generate a SCIM token:
 
@@ -261,19 +347,37 @@ If you are using SCIM instead of JIT:
 sudo rstudio-server user-service generate-token "EntraID SCIM Token"
 ```
 
-2. Open the Entra ID application created previously
+### Step 7: Configure the EntraID SCIM provisioning {#configure-entraid-scim}
 
-3. Under **Provisioning**, set **Provisioning Mode** to **Automatic**.
+1. Open the enterprise Entra ID application created previously
 
-4. In **Admin Credentials**:
+2. Under **Manage** select **Provisioning**, set **Provisioning Mode** to **Automatic**.
+
+3. In **Admin Credentials**:
 
     - **Tenant URL**: `https://<workbench-hostname>/scim/v2`
 
     - **Secret Token**: Paste the token from Step 1.
 
+4. Under **Provisioning** click on **Mappings**and click on **Provision Microsoft Entra ID Users**, review the list and make sure the mappings and attributes are correct. 
+
 5. Test the connection and save.
 
-### Step 6: Restart Workbench {#restart-workbench}
+### Step 8: (Optional) Configure EntraID SCIM group provisioning {#configure-scim-groups}
+
+EntraID can synchronize groups assigned to the Workbench application. This is optional but recommended if you use groups for access control. Groups must be assigned to the application to be provisioned. 
+
+1. Open the enterprise Entra ID application created previously
+
+2. Under **Manage** select **Provisioning** and set the **Provisioning Status** to **On** and save
+
+3. Go to **Manage** select **Users and groups** and select the user and groups that should be added. 
+
+:::{.callout-note}
+EntraID limits group membership to 150. If a user is a member of more than 150 groups, then their group list is concatenated, potentially missing important ones that are needed inside Posit Connect or Workbench.
+:::
+
+### Step 9: Restart Workbench {#restart-workbench}
 
 Restart Workbench and check the status and logs for any issues.
 
@@ -291,13 +395,46 @@ sudo tail -n 50 /var/log/rstudio/rstudio-server/rserver.log | grep error*
 sudo tail -n 50 /var/log/rstudio/launcher/rstudio-launcher.log
 ```
 
+EntraID now automatically provisions users assigned to the Workbench application. Proceed to the [Verification](#verification) section to test your configuration.
+
 ## Verification
 
 After completing configuration, test that authentication and provisioning work correctly and that Workbench is able to start successfully without error messages.
 
-## Troubleshooting
+### For JIT provisioning
 
-In case of issues, you can reach out to our [support team](https://docs.posit.co/support.html). Please make sure to include a copy of your diagnostic as well as all error messages and screenshots of your configured applications in EntraID.
+1. In EntraID, assign a test user to the Workbench application.
+
+2. Have the test user navigate to the Workbench URL and sign in using their EntraID credentials.
+
+3. After the user’s first successful login, verify that Workbench created the account:
+
+    ```{.bash filename="Terminal"}
+    sudo rstudio-server list-users
+    ```
+
+    The test user should appear in the output.
+
+4. Verify that the user can start a session successfully.
+
+### For SCIM provisioning
+
+1. In EntraID, assign a test user to both applications: the Workbench OAuth application and the Workbench SAML SCIM application.
+
+2. Verify that Workbench provisioned the user:
+
+    ```{.bash filename="Terminal"}
+    sudo rstudio-server list-users
+    ```
+
+    The test user should appear in the output.
+
+3. Have the test user navigate to the Workbench URL and sign in using their EntraID credentials.
+
+4. Verify that the user can start a session successfully.
+
+
+## Troubleshooting
 
 Use the [pamtester](https://docs.posit.co/ide/server-pro/admin/access_and_security/pam_sessions.html#testing-and-troubleshooting) utility for additional testing:
 
@@ -305,11 +442,7 @@ Use the [pamtester](https://docs.posit.co/ide/server-pro/admin/access_and_securi
 /usr/lib/rstudio-server/bin/pamtester --verbose rstudio <user> authenticate acct_mgmt setcred open_session close_session
 ```
 
-### EntraID group issues
-
-EntraID limits group membership to 150. If a user is a member of more than 150 groups, then their group list is concatenated, potentially missing important ones that are needed inside Posit Connect or Workbench.
-
-### Workbench
+In case of issues, you can reach out to our [support team](https://docs.posit.co/support.html). Please make sure to include a copy of your diagnostic as well as all error messages and screenshots of your configured applications in EntraID.
 
 ### Complete minimal config example
 
