@@ -159,8 +159,6 @@ Install system dependencies as the root user. While not always required, complet
 
 #### Ubuntu and Debian
 
-Follow the steps in the [how to guide for setting up JIT](https://github.com/rstudio/docs.rstudio.com/blob/ead3bd8cc2b0d03a32de04a14b7d3f791447191e/how-to-guides/guides/configure-pwb-jit.md).
-
 ```{.bash filename="Terminal"}
 # Install the PAM mkhomedir module if not already installed
 sudo apt update
@@ -171,8 +169,6 @@ echo "session required pam_mkhomedir.so skel=/etc/skel/ umask=0022" | sudo tee -
 ```
 
 #### RHEL and Rocky
-
-Follow the steps in the [how to guide for setting up JIT](https://github.com/rstudio/docs.rstudio.com/blob/ead3bd8cc2b0d03a32de04a14b7d3f791447191e/how-to-guides/guides/configure-pwb-jit.md).
 
 ```{.bash filename="Terminal"}
 # Install required packages
@@ -187,8 +183,6 @@ authselect apply-changes
 ```
 
 ### Step 2: Configure the NSS module {#configure-nss}
-
-Follow the steps in the [how to guide for setting up JIT](https://github.com/rstudio/docs.rstudio.com/blob/ead3bd8cc2b0d03a32de04a14b7d3f791447191e/how-to-guides/guides/configure-pwb-jit.md).
 
 #### Ubuntu and Debian
 
@@ -228,8 +222,6 @@ sudo authselect apply-changes
 
 ### Step 3: Disable NSCD caching {#disable-nscd}
 
-Follow the steps in the [how to guide for setting up JIT](https://github.com/rstudio/docs.rstudio.com/blob/ead3bd8cc2b0d03a32de04a14b7d3f791447191e/how-to-guides/guides/configure-pwb-jit.md).
-
 Name Service Cache Daemon (NSCD) caching can cause issues with the Workbench user provisioning process, and so must be disabled by following the steps below. Disabling these caches does not affect system performance, as Workbench user provisioning implements its own caching mechanism.
 
 If NSCD caching utilities are not installed, continue to the next step.
@@ -241,8 +233,6 @@ enable-cache group no
 ```
 
 ### Step 4: Configure JIT provisioning for Workbench {#configure-jit}
-
-Follow the steps in the [how to guide for setting up JIT](https://github.com/rstudio/docs.rstudio.com/blob/ead3bd8cc2b0d03a32de04a14b7d3f791447191e/how-to-guides/guides/configure-pwb-jit.md).
 
 Update the `/etc/rstudio/rserver.conf` config file to enable user provisioning with JIT:
 

@@ -145,6 +145,8 @@ At this point, you have configured authentication. Users assigned to the Workben
 
 ### Step 1: Configure Workbench for user provisioning {#configure-user-provisioning}
 
+#### SCIM
+
 1. Edit the Workbench configuration file:
 
     ```{.bash filename="Terminal"}
@@ -157,6 +159,29 @@ At this point, you have configured authentication. Users assigned to the Workben
     # Enable user provisioning
     user-provisioning-enabled=1
 
+    # Enable Pluggable Authentication Modules (PAM) sessions for home directory creation
+    auth-pam-sessions-enabled=1
+    ```
+
+#### JIT
+
+JIT provisioning creates user accounts automatically when users log in for the first time. Unlike SCIM, JIT does not synchronize user deactivation or support group provisioning.
+
+1. Edit the Workbench configuration file:
+    
+    ```
+    sudo nano /etc/rstudio/rserver.conf
+    ```
+    
+2. Add the following lines:
+    
+    ```
+    # Enable user provisioning
+    user-provisioning-enabled=1
+    
+    # Enable user provisioning with JIT registration instead of SCIM
+    user-provisioning-register-on-first-login=1
+    
     # Enable Pluggable Authentication Modules (PAM) sessions for home directory creation
     auth-pam-sessions-enabled=1
     ```
@@ -188,8 +213,8 @@ sudo dnf install -y oddjob-mkhomedir authselect
 sudo systemctl enable --now oddjobd.service
 
 # Enable the home directory creation feature
-authselect enable-feature with-mkhomedir
-authselect apply-changes
+sudo authselect enable-feature with-mkhomedir
+sudo authselect apply-changes
 ```
 
 :::
@@ -226,25 +251,47 @@ If you have SSSD or Active Directory configured, ensure `pwb` appears before `ss
     shadow:         files pwb
     ```
 
+If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
+
 #### RHEL and Rocky
 
-1. Create an authselect profile:
-
-    ```{.bash filename="Terminal"}
+1. Verify the NSS module is installed:
+    
+    ```
+    ls -l /usr/lib64/libnss_pwb.so.2
+    ```
+    
+2. Create a custom authselect profile:
+    
+    ```
     sudo authselect create-profile pwb --base-on=minimal
     ```
-
-2. Modify the `/etc/authselect/custom/pwb/nsswitch.conf` file to include `pwb` before `sssd` (if present), otherwise last in each row:
-
-    ```{.bash filename="/etc/authselect/custom/pwb/nsswitch.conf"}
-    passwd:         files systemd pwb
-    group:          files systemd pwb
-    shadow:         files pwb sssd
+    
+    Note
+    
+    If you have SSSD configured, use `--base-on=sssd` instead of `--base-on=minimal`.
+    
+3. Edit the profile configuration:
+    
     ```
-
-3. Once saved, update the profile:
-
-    ```{.bash filename="Terminal"}
+    sudo nano /etc/authselect/custom/pwb/nsswitch.conf
+    ```
+    
+4. Modify the `passwd`, `group`, and `shadow` lines to include `pwb`:
+    
+    ```
+    passwd:     files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-passwd"}
+    group:      files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-group"}
+    shadow:     files pwb                                       {exclude if "with-custom-shadow"}
+    ```
+    
+    Note
+    
+    If you have SSSD configured, ensure `pwb` appears before `sssd` to prioritize Workbench users.
+    
+5. Activate the profile:
+    
+    ```
     sudo authselect select custom/pwb with-mkhomedir
     sudo authselect apply-changes
     ```
