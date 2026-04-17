@@ -160,7 +160,7 @@ At this point, you have configured authentication. Users assigned to the Workben
 
 Workbench requires users to have local or networked system accounts. These need to be linux users complete with home directories.
 
-You must set up local system accounts by using `useradd` or network services such as LDAP or Active Directory, and then map authenticating users to these accounts.
+You must set up local system accounts by using `useradd` or network services such as LDAP or Active Directory, JIT or SCIM, and then map authenticating users to these accounts.
 
 ### Manual setup (recommended for trials)
 
