@@ -160,21 +160,7 @@ At this point, you have configured authentication. Users assigned to the Workben
 
 Workbench requires users to have local or networked system accounts. These need to be linux users complete with home directories.
 
-You must set up local system accounts by using `useradd` or network services such as LDAP or Active Directory, JIT or SCIM, and then map authenticating users to these accounts.
 
-### Manual setup (recommended for trials)
-
-If you do not have many users and do not expect many changes in usership, individual provisioning might be the easiest choice. Similarly, if there are issues with the other provisioning methods, this is always an option.
-
-The username must match the preferred_username claim from Entra ID. Alternatively, you can configure Workbench to use a different claim with the `auth-openid-username-claim=` parameter in `/etc/rstudio/rserver.conf`.
-
-```{.bash filename="Terminal"}
-# Provision users
-sudo useradd myusername -m
-
-# Add users to whichever group is being used to control Workbench access
-sudo groupadd myworkbenchusersgroup
-```
 
 ### Step 1: Configure Workbench for user provisioning {#configure-user-provisioning}
 
