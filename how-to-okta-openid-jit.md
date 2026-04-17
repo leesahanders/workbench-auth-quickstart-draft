@@ -156,8 +156,8 @@ The username must match the preferred_username claim from Entra ID. Alternativel
 # Provision users
 sudo useradd myusername -m
 
-# Add users to Workbench group
-sudo groupadd workbench-users
+# Add users to whichever group is being used to control Workbench access
+sudo groupadd myworkbenchusersgroup
 ```
 
 ### Step 1: Configure Workbench for user provisioning {#configure-user-provisioning}
@@ -280,11 +280,11 @@ sudo authselect create-profile pwb --base-on=minimal
     
 3. Modify the `passwd`, `group`, and `shadow` lines to include `pwb` in the profile configuration `/etc/authselect/custom/pwb/nsswitch.conf`:
     
-    ```{.bash filename="/etc/authselect/custom/pwb/nsswitch.conf"}
-    passwd:     files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-passwd"}
-    group:      files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-group"}
-    shadow:     files pwb                                       {exclude if "with-custom-shadow"}
-    ```
+```{.bash filename="/etc/authselect/custom/pwb/nsswitch.conf"}
+passwd:     files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-passwd"}
+group:      files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-group"}
+shadow:     files pwb                                       {exclude if "with-custom-shadow"}
+```
     
 :::{.callout-note}
 If you have SSSD or Active Directory configured, ensure `pwb` appears before `sssd` in the configuration to prioritize Workbench users.
@@ -326,6 +326,10 @@ If nscd is installed and running, make the following changes.
     ```
 
 ### Step 6: Generate the SCIM authentication token {#generate-scim-token}
+
+:::{.callout-note}
+Only proceed with this step if you are using SCIM for user provisioning. Skip this step if you are using JIT.
+:::
 
 Workbench uses a bearer token to authenticate SCIM requests from Okta.
 
@@ -379,6 +383,10 @@ The Okta Marketplace integration for [Workbench](https://www.okta.com/integratio
 15. Select **Save**.
 
 ### Step 8: (Optional) Configure Okta SCIM group provisioning {#configure-scim-groups}
+
+:::{.callout-note}
+Only proceed with this step if you are using SCIM for user provisioning. Skip this step if you are using JIT.
+:::
 
 Okta can synchronize groups assigned to the Workbench application. This is optional but recommended if you use groups for access control.
 

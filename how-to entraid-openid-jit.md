@@ -172,8 +172,8 @@ The username must match the preferred_username claim from Entra ID. Alternativel
 # Provision users
 sudo useradd myusername -m
 
-# Add users to Workbench group
-sudo groupadd workbench-users
+# Add users to whichever group is being used to control Workbench access
+sudo groupadd myworkbenchusersgroup
 ```
 
 ### Step 1: Configure Workbench for user provisioning {#configure-user-provisioning}
@@ -266,7 +266,6 @@ ls -l /usr/lib/x86_64-linux-gnu/libnss_pwb.so.2
 2. Modify the`/etc/nsswitch.conf` NSS configuration file lines `passwd`, `group`, and `shadow` to include `pwb` if it is not already included:
 
 ```{.bash filename="/etc/nsswitch.conf"}
-# Modify the passwd, group, and shadow lines to include pwb at the end
 passwd:         files systemd pwb
 group:          files systemd pwb
 shadow:         files pwb
@@ -297,10 +296,9 @@ sudo authselect create-profile pwb --base-on=minimal
 3. Modify the `passwd`, `group`, and `shadow` lines to include `pwb` in the profile configuration `/etc/authselect/custom/pwb/nsswitch.conf`:
 
 ```{.bash filename="/etc/authselect/custom/pwb/nsswitch.conf"}
-# Modify the passwd, group, and shadow lines to include pwb at the end
-passwd:         files systemd pwb
-group:          files systemd pwb
-shadow:         files pwb sssd
+passwd:     files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-passwd"}
+group:      files {if "with-altfiles":altfiles }systemd pwb {exclude if "with-custom-group"}
+shadow:     files pwb                                       {exclude if "with-custom-shadow"}
 ```
 
 :::{.callout-note}
@@ -341,6 +339,10 @@ If nscd is installed and running, make the following changes.
 
 ### Step 6: Generate SCIM authentication token {#generate-scim-token}
 
+:::{.callout-note}
+Only proceed with this step if you are using SCIM for user provisioning. Skip this step if you are using JIT.
+:::
+
 1. Generate a SCIM token:
 
 ```{.bash filename="Terminal"}
@@ -348,6 +350,10 @@ sudo rstudio-server user-service generate-token "EntraID SCIM Token"
 ```
 
 ### Step 7: Configure the EntraID SCIM provisioning {#configure-entraid-scim}
+
+:::{.callout-note}
+Only proceed with this step if you are using SCIM for user provisioning. Skip this step if you are using JIT.
+:::
 
 1. Open the enterprise Entra ID application created previously
 
@@ -365,12 +371,14 @@ sudo rstudio-server user-service generate-token "EntraID SCIM Token"
 
 ### Step 8: (Optional) Configure EntraID SCIM group provisioning {#configure-scim-groups}
 
+:::{.callout-note}
+Only proceed with this step if you are using SCIM for user provisioning. Skip this step if you are using JIT.
+:::
+
 EntraID can synchronize groups assigned to the Workbench application. This is optional but recommended if you use groups for access control. Groups must be assigned to the application to be provisioned. 
 
 1. Open the enterprise Entra ID application created previously
-
 2. Under **Manage** select **Provisioning** and set the **Provisioning Status** to **On** and save
-
 3. Go to **Manage** select **Users and groups** and select the user and groups that should be added. 
 
 :::{.callout-note}
